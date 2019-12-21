@@ -1,0 +1,2 @@
+a =String(12345).replace(new RegExp(`${45}$`),'')
+console.log(a)

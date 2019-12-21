@@ -35,6 +35,10 @@ const Opcodes = {
     MULTIPLY: '02',
     WRITE: '03',
     OUTPUT: '04',
+    JUMP_IF_TRUE: '05', // JE
+    JUMP_IF_FALSE: '06', // JNE
+    LESS_THAN: '07',
+    EQUALS: '08',
     HALT: '99',
 };
 
@@ -48,10 +52,10 @@ const getValue = (tape, pos, mode) => {
     throw new Error(`could not interpret mode: ${mode}`);
 };
 
-const PROGRAM_INPUT = 1;
+const PROGRAM_INPUT = 5;
 
 function writeToTape(tape, position, value) {
-    console.log(`Writing value: ${chalk.blue(value)} to tape position ${chalk.blue(position)}`);
+    console.log(`Writing value ${chalk.blue(value)} to tape position ${chalk.blue(position)}`);
     tape[position] = value;
 }
 
@@ -121,6 +125,86 @@ function compute(tape) {
 
                 OUTPUT.push(getValue(tape, position + 1, modeR));
                 position = position + 2;
+                break;
+            case Opcodes.JUMP_IF_TRUE: // 05
+                /**
+                 * jump-if-true: if the first parameter is non-zero, it sets
+                 * the instruction pointer to the value from the second
+                 * parameter. Otherwise, it does nothing.
+                 *
+                 *                 P1      P2
+                 * [ MODES+CODE, PARAM1, PARAM2 ]
+                 */
+                [modeP1, modeP2] = modes;
+
+                if (getValue(tape, position + 1, modeP1) !== 0) {
+                    newPos = getValue(tape, position + 2, modeP2);
+                    console.log(`Setting instruction pointer to ${chalk.blue(newPos)}`);
+                    position = newPos;
+                } else {
+                    position = position + 3;
+                }
+
+                break;
+            case Opcodes.JUMP_IF_FALSE: // 06
+                /**
+                 * jump-if-false: if the first parameter is zero, it sets the
+                 * instruction pointer to the value from the second parameter.
+                 * Otherwise, it does nothing.
+                 *
+                 *                 P1      P2
+                 * [ MODES+CODE, PARAM1, PARAM2 ]
+                 */
+                [modeP1, modeP2] = modes;
+
+                if (getValue(tape, position + 1, modeP1) === 0) {
+                    newPos = getValue(tape, position + 2, modeP2);
+                    console.log(`Setting instruction pointer to ${chalk.blue(newPos)}`);
+                    position = newPos;
+                } else {
+                    position = position + 3;
+                }
+
+                break;
+            case Opcodes.LESS_THAN: // 07
+                /**
+                 * less than: if the first parameter is less than the second
+                 * parameter, it stores 1 in the position given by the third
+                 * parameter. Otherwise, it stores 0.
+                 *
+                 *                 P1      P2      P3
+                 * [ MODES+CODE, PARAM1, PARAM2, PARAM3 ]
+                 */
+                [modeP1, modeP2, modeP3] = modes;
+                assert(modeP3 === ParamModes.POSITION);
+
+                if (getValue(tape, position + 1, modeP1) < getValue(tape, position + 2, modeP2)) {
+                    writeToTape(tape, tape[position + 3], 1);
+                } else {
+                    writeToTape(tape, tape[position + 3], 0);
+                }
+
+                position = position + 4;
+                break;
+            case Opcodes.EQUALS: // 08
+                /**
+                 * equals: if the first parameter is equal to the second
+                 * parameter, it stores 1 in the position given by the third
+                 * parameter. Otherwise, it stores 0.
+                 *
+                 *                 P1      P2      P3
+                 * [ MODES+CODE, PARAM1, PARAM2, PARAM3 ]
+                 */
+                [modeP1, modeP2, modeP3] = modes;
+                assert(modeP3 === ParamModes.POSITION);
+
+                if (getValue(tape, position + 1, modeP1) === getValue(tape, position + 2, modeP2)) {
+                    writeToTape(tape, tape[position + 3], 1);
+                } else {
+                    writeToTape(tape, tape[position + 3], 0);
+                }
+
+                position = position + 4;
                 break;
             case Opcodes.HALT: // 99
                 console.log('Halting Execution');
